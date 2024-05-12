@@ -1,0 +1,463 @@
+globals [
+  температура осадки список-животных
+  лес поляна водоем
+  общее-количество-зайцев общее-количество-волков общее-количество-белок
+]
+; Переменные для типов местности
+
+; Переменные для климатических условий
+
+; Глобальные переменные для сбора статистики
+
+
+breed [деревья дерево]
+breed [зайцы заяц]
+breed [волки волк]
+breed [белки белка]
+turtles-own [energy]  ; Добавление переменной энергии для всех черепах
+to setup
+  clear-all
+  set температура 20 ; начальная температура в градусах Цельсия
+  set осадки 500 ; начальное количество осадков в мм/год
+  create-animals
+  setup-environment
+  setup-animals
+  setup-climate
+  reset-ticks
+end
+
+
+
+to create-animals
+  ; Создание списка видов животных
+  set список-животных []
+
+  ; Добавление зайцев в список
+  let зайцы-характеристики (list "Заяц" "Травоядное" 5 2 10)  ; Добавление начальной энергии для зайцев
+  set список-животных lput зайцы-характеристики список-животных
+
+  ; Добавление волков в список
+  let волки-характеристики (list "Волк" "Хищник" 7 3 20)  ; Добавление начальной энергии для волков
+  set список-животных lput волки-характеристики список-животных
+
+  ; Добавление белок в список
+  let белки-характеристики (list "Белка" "Всеядное" 3 1.5 15)  ; Добавление начальной энергии для белок
+  set список-животных lput белки-характеристики список-животных
+
+  ; Создание агентов зайцев
+  foreach список-животных [
+    текущий-животной ->
+      if first текущий-животной = "Заяц" [
+        create-зайцы (item 2 текущий-животной) [
+          set color white
+          set size (item 3 текущий-животной)
+          set energy (item 4 текущий-животной)  ; Инициализация энергии для зайцев
+        ]
+      ]
+  ]
+
+  ; Создание агентов волков
+  foreach список-животных [
+    текущий-животной ->
+      if first текущий-животной = "Волк" [
+        create-волки (item 2 текущий-животной) [
+          set color gray
+          set size (item 3 текущий-животной)
+          set energy (item 4 текущий-животной)  ; Инициализация энергии для волков
+        ]
+      ]
+  ]
+
+  ; Создание агентов белок
+  foreach список-животных [
+    текущий-животной ->
+      if first текущий-животной = "Белка" [
+        create-белки (item 2 текущий-животной) [
+          set color brown
+          set size (item 3 текущий-животной)
+          set energy (item 4 текущий-животной)  ; Инициализация энергии для белок
+        ]
+      ]
+  ]
+end
+
+to setup-animals
+  ; Создание и случайное распределение зайцев
+  create-зайцы 100 [
+    set color white
+    set size 1.5
+    set energy 150 ; Увеличенная начальная энергия
+    setxy random-xcor random-ycor ; Случайная позиция на карте
+  ]
+  ; Создание и случайное распределение волков
+  create-волки 10 [
+    set color gray
+    set size 2
+    set energy 250 ; Увеличенная начальная энергия
+    setxy random-xcor random-ycor ; Случайная позиция на карте
+  ]
+  ; Создание и случайное распределение белок
+  create-белки 60 [
+    set color brown
+    set size 1
+    set energy 120 ; Увеличенная начальная энергия
+    setxy random-xcor random-ycor ; Случайная позиция на карте
+  ]
+end
+
+
+; Изменение процедуры создания деревьев
+to setup-environment
+  ; Создание типов местности
+  set лес green
+  set поляна brown
+  set водоем blue
+
+  ; Распределение местности на карте
+  ask patches [
+    ifelse random-float 1 < 0.7 [
+      set pcolor лес ; 70% территории - лес
+    ] [
+      ifelse random-float 1 < 0.5 [
+        set pcolor поляна ; 15% территории - поляны
+      ] [
+        set pcolor водоем ; 15% территории - водоемы
+      ]
+    ]
+  ]
+
+  ; Создание деревьев в лесу с ограничением роста
+  ask patches with [pcolor = лес] [
+    if random-float 1 < 0.04 [ ; 7% вероятность появления дерева на лесной клетке
+      sprout-деревья 1 [
+        set shape "tree"
+        set color red
+        set size 2
+      ]
+    ]
+  ]
+end
+
+; Изменение процедуры роста деревьев
+to grow-trees
+  ask деревья [
+    ; Добавление естественной гибели деревьев
+    if random-float 1 < 0.05 [ ; 1% вероятность гибели дерева каждый шаг
+      die
+    ]
+  ]
+end
+
+to change-climate
+  ; Имитация изменения климата
+  let delta-temp random-float 1 - 0.5 ; Случайное изменение температуры
+  let new-temp температура + delta-temp
+  
+  ; Проверка, чтобы температура не выходила за пределы -30 и 40 градусов
+  if new-temp > 40 [ set new-temp 40 ]
+  if new-temp < -30 [ set new-temp -30 ]
+  
+  set температура new-temp ; Обновление глобальной переменной температуры
+  
+  ; Изменение количества осадков
+  let delta-precip random-normal 0 10 ; Случайное изменение осадков
+  let new-precip осадки + delta-precip
+  
+  ; Проверка, чтобы осадки не выходили за пределы 0 и 1000 мм
+  if new-precip > 1000 [ set new-precip 1000 ]
+  if new-precip < 0 [ set new-precip 0 ]
+  
+  set осадки new-precip ; Обновление глобальной переменной осадков
+
+  
+end
+
+
+; Процедуры для зайцев
+to move-зайцы
+  ask зайцы [
+    ; Зайцы перемещаются случайным образом
+    rt random 360
+    fd 2
+    ; Если заяц находится на поляне, он ищет пищу
+    if pcolor = поляна [eat-food]
+  ]
+end
+
+
+; Разрешение волкам охотиться на белок
+to move-волки
+  ask волки [
+    let prey зайцы-here with [energy > 5]
+    let predators белки-here with [energy > 5]
+    let all_targets sentence prey predators
+    let target one-of all_targets
+    if (is-agent? target) [
+      face target
+      fd 1
+      if any? зайцы-here [eat-зайцы]
+      if any? белки-here [eat-белки]
+    ]
+  ]
+end
+
+
+
+to eat-зайцы
+  ; Волки едят зайцев, что увеличивает их энергию
+  ask зайцы-here [agent-die]
+  set energy energy + 10
+end
+
+to eat-белки
+  ; Волки едят белок, что увеличивает их энергию
+  ask белки-here [agent-die]
+  set energy energy + 8
+end
+
+; Процедуры для белок
+to move-белки
+  ask белки [
+    ; Белки перемещаются случайным образом
+    rt random 360
+    fd 2
+    ; Белки могут есть как растения, так и мелких животных
+    if pcolor = лес [search-food]
+  ]
+end
+
+to search-food
+  ; Белки ищут пищу в лесу
+  if any? деревья-here [
+    ; Едят орехи или фрукты с деревьев
+    set energy energy + 15
+  ]
+end
+
+; Общие процедуры для всех животных
+to agent-die
+  ; Агент умирает и удаляется из модели
+  die
+end
+
+
+; Инициализация климатических переменных
+to setup-climate
+  set температура 15 ; начальная температура в градусах Цельсия
+  set осадки 500 ; начальное количество осадков в мм
+end
+
+; Правила взаимодействия между животными и растениями
+to interact-animals-plants
+  ask деревья [
+    ; Деревья растут если температура и осадки в оптимальном диапазоне
+    if (температура > 10 and температура < 25) and (осадки > 400 and осадки < 600) [
+      set size size + 0.2 ; рост деревьев
+    ]
+    if (count деревья < 10) [
+      ask patches with [pcolor = лес] [
+        if random-float 1 < 0.3 [ ; 7% вероятность появления дерева на лесной клетке
+          sprout-деревья 1 [
+            set shape "tree"
+            set color red
+            set size 2
+      ]
+    ]
+  ]
+    ]
+  ]
+
+  ask зайцы [
+    ; Зайцы едят молодые деревья
+    if any? деревья-here with [size < 5] [
+      eat-tree
+    ]
+  ]
+end
+
+to eat-tree
+  ; Зайцы уменьшают размер дерева, получая энергию
+  ask one-of деревья-here with [size < 5] [
+    set size size - 0.3
+  ]
+  set energy energy + 8
+end
+
+; Правила взаимодействия между хищниками и добычей
+to predator-prey-interaction
+  ask волки [
+    ; Волки охотятся на зайцев
+    if any? зайцы in-radius 1 [
+      eat-зайцы
+    ]
+  ]
+end
+
+; Эффекты климатических изменений на агентов
+to climate-effects
+  ask зайцы [
+    ; Зайцы теряют энергию быстрее при высокой температуре
+    if температура > 30 [
+      set energy energy - 2
+    ]
+  ]
+
+  ask волки [
+    ; Волки теряют энергию быстрее при низких осадках
+    if осадки < 200 [
+      set energy energy - 3
+    ]
+  ]
+end
+
+
+
+; Регулирование энергии и пищевых цепочек
+to eat-food
+  ; Зайцы едят траву, что увеличивает их энергию
+  if pcolor = поляна [
+    set energy energy + 15
+    ; Трава на поляне уменьшается
+    
+  ]
+end
+
+; Уменьшение скорости потери энергии для всех животных
+to update-зайцы
+  ask зайцы [
+    set energy energy - 2 ; Уменьшенная потеря энергии
+    if energy < 0 [agent-die]
+    if energy > 275 [reproduce-зайцы]
+  ]
+end
+
+
+to update-белки
+  ask белки [
+    set energy energy - 2 ; Уменьшенная потеря энергии
+    if energy < 0 [agent-die]
+    if energy > 200 [reproduce-белки]
+  ]
+end
+
+; Процедуры моделирования для волков
+to update-волки
+  ask волки [
+    ; Волки теряют энергию каждый шаг
+    set energy energy - 2
+    ; Если энергия падает ниже определенного уровня, волк умирает
+    if energy < 0 [agent-die]
+    ; Волки размножаются, если у них достаточно энергии
+    if energy > 450 [reproduce-волки]
+  ]
+end
+
+
+to reproduce-волки
+  ; Волки размножаются, создавая нового волка
+  hatch 1 [
+    set color gray
+    set energy 150
+    setxy random-xcor random-ycor
+  ]
+end
+
+; Уменьшение порога энергии для размножения
+to reproduce-зайцы
+    hatch 1 [
+      set color white
+      set energy 100
+      setxy random-xcor random-ycor
+    ]
+
+end
+
+to reproduce-белки
+    hatch 1 [
+      set color brown
+      set energy 80
+      setxy random-xcor random-ycor
+    ]
+end
+
+; Адаптация к изменениям климата
+to adapt-to-climate
+  ask turtles [
+    ; Агенты адаптируются к повышенной температуре
+    if температура > 30 [
+      set energy energy - 1 ; дополнительная потеря энергии
+    ]
+    ; Агенты адаптируются к низким осадкам
+    if осадки < 200 [
+      set energy energy - 1 ; дополнительная потеря энергии
+    ]
+  ]
+end
+
+; Обновление модели с учетом адаптации и процедур моделирования
+
+
+
+; Инициализация статистических переменных
+to setup-statistics
+  set общее-количество-зайцев 0
+  set общее-количество-волков 0
+  set общее-количество-белок 0
+end
+
+; Обновление статистики популяций
+to update-statistics
+  ; Считаем количество зайцев
+  set общее-количество-зайцев count зайцы
+  ; Считаем количество волков
+  set общее-количество-волков count волки
+  ; Считаем количество белок
+  set общее-количество-белок count белки
+end
+
+; Вывод статистики на график
+to plot-statistics
+  ; Обновляем графики популяций
+  set-current-plot "Популяции"
+  set-current-plot-pen "Зайцы"
+  plot общее-количество-зайцев
+  set-current-plot-pen "Волки"
+  plot общее-количество-волков
+  set-current-plot-pen "Белки"
+  plot общее-количество-белок
+
+  ; Обновляем график климата
+  set-current-plot "Температура"
+  set-current-plot-pen "Температура"
+  plot температура
+  set-current-plot "Осадки"
+  set-current-plot-pen "Осадки"
+  plot осадки
+end
+
+; Главный цикл моделирования с включением сбора статистики
+to go
+   ; Вызов функций из предыдущих пунктов
+  move-зайцы
+  move-волки
+  move-белки
+
+  ; Вызов новых функций взаимодействия и климатических эффектов
+  interact-animals-plants
+  predator-prey-interaction
+  climate-effects
+  grow-trees
+
+  change-climate
+  adapt-to-climate
+  update-зайцы
+  update-волки
+  update-белки
+
+  ; Вызов функций сбора и вывода статистики
+  update-statistics
+  plot-statistics
+
+  ; Обновление модели
+  tick
+end
